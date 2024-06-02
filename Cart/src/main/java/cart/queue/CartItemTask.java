@@ -1,9 +1,11 @@
 package cart.queue;
 
 import cart.model.Product;
+import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 
+@Component
 public class CartItemTask {
     private String imageId;
     private Long stockId;

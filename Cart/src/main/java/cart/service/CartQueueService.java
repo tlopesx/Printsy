@@ -28,9 +28,9 @@ public class CartQueueService {
 
     // Use ConcurrentHashMap for thread-safe operations
     private final Map<String, CartQueue> queueMap = new ConcurrentHashMap<>();
-    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private final Map<String, ExecutorService> executorMap = new ConcurrentHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private final Duration delay = Duration.ofSeconds(120);  // Needs to be changed for final demo
+    private final Duration delay = Duration.ofSeconds(120);
     private final TaskSchedulerService taskSchedulerService;
     private final ProductRepository productRepository;
     private final CartRepository cartRepository;
@@ -45,7 +45,6 @@ public class CartQueueService {
 
     // Adds a new CartQueue to the dictionary with the given imageId
     public void addToQueue(String imageId, CartItemTask cartItemTask) {
-        // Compute if absent will run the lambda function is the key is not in the Queue Map
         CartQueue cartQueue = queueMap.computeIfAbsent(imageId, k -> new CartQueue());
         LOGGER.info("Added to queue: " + imageId);
         if (cartQueue.enqueue(cartItemTask)) {
@@ -65,18 +64,16 @@ public class CartQueueService {
     }
 
     private void startProcessing() {
-        executorService.submit(this::processAllQueues);
+        Executors.newCachedThreadPool().submit(this::processAllQueues);
     }
 
-    // Processes all CartQueues in order
     public void processAllQueues() {
-        // running is set to true, so this will run continuously
         while (running.get()) {
             try {
                 queueMap.forEach((imageId, cartQueue) -> {
-                    CartItemTask task = cartQueue.dequeue();
-                    if (task != null){
-                        processTask(task);
+                    if (!executorMap.containsKey(imageId)) {
+                        executorMap.put(imageId, Executors.newSingleThreadExecutor());
+                        executorMap.get(imageId).submit(() -> processQueue(imageId));
                     }
                 });
                 Thread.sleep(1000);
@@ -86,30 +83,49 @@ public class CartQueueService {
         }
     }
 
+    private void processQueue(String imageId) {
+        CartQueue cartQueue = queueMap.get(imageId);
+        while (running.get() && cartQueue != null) {
+            try {
+                CartItemTask task = cartQueue.dequeue();
+                if (task != null) {
+                    processTask(task);
+                } else {
+                    Thread.sleep(1000); // Wait before checking the queue again
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     public void shutdown() {
         running.set(false);
-        executorService.shutdown();
+        executorMap.values().forEach(ExecutorService::shutdown);
         try {
-            if (!executorService.awaitTermination(800, TimeUnit.MILLISECONDS)) {
-                executorService.shutdownNow();
+            for (ExecutorService executorService : executorMap.values()) {
+                if (!executorService.awaitTermination(800, TimeUnit.MILLISECONDS)) {
+                    executorService.shutdownNow();
+                }
             }
         } catch (InterruptedException e) {
-            executorService.shutdownNow();
+            executorMap.values().forEach(ExecutorService::shutdownNow);
         }
     }
 
 
+
     private void processTask(CartItemTask task){
         // Create product and add to Products table
-        Product newProduct = new Product();
-        newProduct.setImageId(task.getImageId());
-        newProduct.setStockId(task.getStockId());
-        newProduct.setPrice(task.getPrice());
+        Product newProduct = new Product(
+                task.getImageId(),
+                task.getStockId(),
+                task.getPrice());
         productRepository.save(newProduct);
 
-        Cart newCartItem = new Cart();
-        newCartItem.setUserId(task.getUserId());
-        newCartItem.setProduct(newProduct);
+        Cart newCartItem = new Cart(
+                task.getUserId(),
+                newProduct);
         cartRepository.save(newCartItem);
 
 
@@ -134,11 +150,15 @@ public class CartQueueService {
     public void scheduleCartCleanup(Long userId, Instant scheduledTime) {
         LOGGER.info("Scheduling cleanup task for used ID: " + userId);
         Runnable cleanupTask = () -> {
+
             LOGGER.info("Running scheduled cart cleanup for user ID: " + userId);
+
             List<Cart> cartItems = cartRepository.findAllByUserId(userId);
+
             if (cartItems.isEmpty()) {
                 throw new RuntimeException("No cart items found for user with ID " + userId);
             }
+
             cartRepository.deleteAll(cartItems);
         };
 

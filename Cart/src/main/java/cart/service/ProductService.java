@@ -1,21 +1,25 @@
 package cart.service;
 import cart.dto.ProductResult;
 import cart.model.Product;
+import cart.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
 
     private final GalleryService galleryService;
+    private final ProductRepository productRepository;
 
     @Autowired
-    public ProductService(GalleryService galleryService) {
+    public ProductService(GalleryService galleryService, ProductRepository productRepository) {
         this.galleryService = galleryService;
+        this.productRepository = productRepository;
     }
 
     public ProductResult convertToProductResult(Product product) {
@@ -55,5 +59,25 @@ public class ProductService {
 
             return productResult;
         }).collect(Collectors.toList());
+    }
+
+    public ProductResult getProductById(Long productId) {
+
+        Optional<Product> product = productRepository.findByProductId(productId);
+
+        if (product.isPresent()) {
+            return convertToProductResult(product.get());
+        }
+        else {
+            throw new RuntimeException("Product with ID " + productId + " not found");
+        }
+    }
+
+    public List<ProductResult> getAllProducts() {
+        List<Product> allProducts = productRepository.findAll();
+        if (allProducts.isEmpty()) {
+            throw new RuntimeException("No products found");
+        }
+        return convertToProductResults(allProducts);
     }
 }

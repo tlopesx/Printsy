@@ -28,8 +28,6 @@ public class TransactionGatewayService {
         this.webClient = webClient;
         this.parser = parser;
     }
-
-    // checked with: {"query": "query FindImageAvailability($imageId: ID!) { findImageAvailability(imageId: $imageId) }","variables": { "imageId": "1" } }
     public int getTransactionImageAvailability(String imageId) {
         String query = "{ \"query\": \"query checkImageTransactionCount($imageId: String!) { checkImageTransactionCount(imageId: $imageId) { count } }\", \"variables\": { \"imageId\": \"" + imageId + "\" } }";
         LOGGER.info("Query: "+ query);

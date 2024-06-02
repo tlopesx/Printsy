@@ -1,7 +1,6 @@
 package cart.service;
 
 import cart.model.Cart;
-import cart.queue.CartItemTask;
 import cart.repository.CartRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;

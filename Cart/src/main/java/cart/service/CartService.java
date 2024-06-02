@@ -15,8 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.logging.Logger;
-import java.time.Duration;
-import java.util.stream.Collectors;
 
 @Service
 public class CartService {
@@ -25,7 +23,7 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
-    private final ProductService productService;
+    public final ProductService productService;
     private final CleanUpService cleanUpService;
     private final TaskSchedulerService taskSchedulerService;
     private final CartQueueService cartQueueService;
@@ -46,19 +44,17 @@ public class CartService {
 
     }
 
-    // ----------------- Transaction Service -----------------
     public boolean isImageAvailable(String imageId) {
         // Determine availability (assuming a threshold of 10)
         return getImageCountByImageId(imageId) < 10;
     }
 
-    // checked with: {"query": "mutation CompletePurchase($userId: ID!) { completePurchase(userId: $userId) }","variables": { "userId": "1" }}
     public boolean completePurchase(Long userId) {
         // Cancel the scheduled task
         List<Cart> cartItems = cartRepository.findAllByUserId(userId);
-        List<TransactionInput> transactionInputs = cartItems.stream() // Convert list to stream
-                .map(Cart::toTransactionInput) // Map each cart item to a TransactionInput
-                .toList(); // Convert the stream back into a list
+        List<TransactionInput> transactionInputs = cartItems.stream()
+                .map(Cart::toTransactionInput)
+                .toList();
 
         if (transactionInputs.isEmpty()) {
             LOGGER.info("No items in the cart for user ID " + userId);
@@ -77,9 +73,6 @@ public class CartService {
         }
     }
 
-
-    // ----------------- Cart Service -----------------
-    // checked with: {"query": "query findImageByImageId($imageId: ID!) { findImageByImageId(imageId: $imageId) }","variables": { "imageId": "1" }}
     public Integer getImageCountByImageId(String imageId) {
 
         int countInCartQueues = cartQueueService.checkImagesInQueue(imageId);
@@ -89,28 +82,17 @@ public class CartService {
         return countInCartQueues + countInCarts + countInTransactions;
     }
 
-    // checked with: {"query": "query findCartItemsByProductId($productId: ID!) { findCartItemsByProductId(productId: $productId) }","variables": { "productId": "1" }}
-    // public Integer getCartItemsByProductId(Long productId) {
-    //     if(cartRepository.checkImagesInCart(productId) != null) {
-    //         return cartRepository.checkImagesInCart(productId);
-    //     } else {
-    //         throw new RuntimeException("Product with ID " + productId + " not found");
-    //     }
-    // }
-
-    // checked with: {"query": "query getCartItemsByUserId($userId: ID!) { getCartItemsByUserId(userId: $userId) { product userId expirationTime } }","variables": { "userId": "1" }}
     public List<CartResult> getCartItemsByUserId(Long userId) {
         List<Cart> cartItems = cartRepository.findAllByUserId(userId);
         return convertToCartResults(cartItems);
     }
 
-    // checked with: {"query": "query checkCartProductsByUserId($userId: ID!) { checkCartProductsByUserId(userId: $userId) { productId imageId stockId price } }","variables": {"userId": "1"}}
     public List<ProductResult> checkCartProductsByUserId(Long userId) {
         List<Cart> cartItems = cartRepository.findAllByUserId(userId);
 
-        List<Product> products = cartItems.stream() // Convert list to stream
-                .map(Cart::getProduct) // get product for each cart item
-                .toList(); // Convert the stream back into a list
+        List<Product> products = cartItems.stream()
+                .map(Cart::getProduct)
+                .toList();
 
         if (products.isEmpty()) {
             throw new RuntimeException("No products found for user with ID " + userId);
@@ -118,36 +100,10 @@ public class CartService {
         return productService.convertToProductResults(products);
     }
 
-    // checked with: {"query": "query findProductById($productId: ID!) { findProductById(productId: $productId) { productId imageId stockId price } }","variables": { "productId": "1" }}
-    public ProductResult getProductById(Long productId) {
-
-        Optional<Product> product = productRepository.findByProductId(productId);
-
-        if (product.isPresent()) {
-            return productService.convertToProductResult(product.get());
-        }
-        else {
-            throw new RuntimeException("Product with ID " + productId + " not found");
-        }
-    }
-
-    // checked with: {"query": "query findAllProducts { findAllProducts { productId imageId stockId price } }"}
-    public List<ProductResult> getAllProducts() {
-        List<Product> allProducts = productRepository.findAll();
-        if (allProducts.isEmpty()) {
-            throw new RuntimeException("No products found");
-        }
-        return productService.convertToProductResults(allProducts);
-    }
-
-    // added a cart item with user_id = 333 for the check
-    // checked with: {"query": "mutation deleteCartItemsByUserId($userId: ID!) { deleteCartItemsByUserId(userId: $userId) }","variables": { "userId": "333" }}
     public void deleteCartItemsByUserId(Long userId) {
         cleanUpService.deleteCartAndProductEntitiesByUser(userId);
     }
 
-    // ----------------- Product Creation & Enqueuing -----------------
-    // checked with: {"query": "mutation addItemtoCart($imageId: ID!, $stockId: ID!, $price: Int!, $userId: ID!) { addItemtoCart(imageId: $imageId, stockId: $stockId, price: $price, userId: $userId) }","variables": {"imageId": "1", "stockId": "1", "price": 100, "userId": "1" } }
     public String addItemToCart(String imageId, Long stockId, Integer price, Long userId) {
 
         LOGGER.info("Attempting to create product with Image ID: " + imageId + ", Stock ID: " + stockId + ", Price: " + price);
@@ -163,21 +119,11 @@ public class CartService {
         return "successfully added";
     }    
 
-    // ----------------- Scheduled Task -----------------
-
-
-    // checked with: {"query": "{ getRemainingCleanupTime }"}
     public Long getRemainingCleanupTime(Long userId) {
         Long remainingTime = taskSchedulerService.getRemainingTime(userId).getSeconds();
         LOGGER.info("Remaining clean up time for userID " + userId + ": " + remainingTime + "seconds");
         return remainingTime;
     }
-
-    // checked with: {"query": "{ peekQueue { userId productId imageId } }"}
-//    public CartItemTask peekQueue() {
-//        return cartQueueService..peekQueue();
-//    }
-
 
     public List<CartResult> convertToCartResults(List<Cart> cartItems) {
         // Fetch all imageUrls at once if possible to minimize calls

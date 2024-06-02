@@ -19,25 +19,11 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
 
     List<Cart> findAllByUserId(Long userId);
 
-    // Method to find all expired carts
     List<Cart> findByExpirationTimeBefore(Instant currentTime);
-
-    boolean existsByUserIdAndProductProductId(Long userId, Long productId);
-
-    Optional<Cart> findByUserIdAndProductProductId(Long userId, Long productId);
 
     @Query("SELECT DISTINCT c.userId FROM Cart c")
     List<Long> findDistinctUserIds();
 
     Cart findTopByUserId(Long userId);
 
-//    @Modifying
-//    @Transactional
-//    @Query("INSERT INTO Cart (userId, productId, expirationTime) VALUES (?1, ?2, ?3)")
-//    void insertCartItem(Long userId, Long productId, Date expirationTime);
-//
-//    @Modifying
-//    @Transactional
-//    @Query("UPDATE Cart SET expirationTime = ?3 WHERE userId = ?1 AND productId = ?2")
-//    void updateCartItem(Long userId, Long productId, Date expirationTime);
 }

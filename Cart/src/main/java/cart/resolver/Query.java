@@ -2,8 +2,6 @@ package cart.resolver;
 
 import cart.dto.CartResult;
 import cart.dto.ProductResult;
-import cart.model.Product;
-import cart.queue.CartItemTask;
 import cart.service.CartService;
 import cart.service.ProductService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,20 +11,20 @@ import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
-import java.time.Duration;
 import java.util.List;
 
 @Controller
-public class CartResolver {
+public class Query {
 
     private final CartService cartService;
+    private final ProductService productService;
 
     @Autowired
-    public CartResolver(CartService cartService, ProductService productService) {
+    public Query(CartService cartService, ProductService productService, ProductService productService1) {
         this.cartService = cartService;
+        this.productService = productService1;
     }
 
-    // ----------------- Queries -----------------
     @QueryMapping
     public boolean findImageAvailability(@Argument String imageId) {
         return cartService.isImageAvailable(imageId);
@@ -49,13 +47,12 @@ public class CartResolver {
 
     @QueryMapping
     public ProductResult findProductById(@Argument Long productId) {
-        return cartService.getProductById(productId);
-
+        return productService.getProductById(productId);
     }
 
     @QueryMapping
     public List<ProductResult> findAllProducts() {
-        return cartService.getAllProducts();
+        return productService.getAllProducts();
     }
 
     @QueryMapping
@@ -63,31 +60,9 @@ public class CartResolver {
         return cartService.getRemainingCleanupTime(userId);
     }
 
-//    @QueryMapping
-//    public CartItemTask peekQueue() {
-//        return cartService.peekQueue();
-//    }
-
     @QueryMapping   
     public List<CartResult> findCartItemsByUserIdForPurchase(@Argument Long userId) {
         return cartService.getCartItemsByUserId(userId);
-    }
-
-    // ----------------- Mutations -----------------
-    @MutationMapping
-    public String deleteCartItemsByUserId(@Argument Long userId) {
-        cartService.deleteCartItemsByUserId(userId);
-        return "Cart items deleted successfully for user ID: " + userId;
-    }
-
-    @MutationMapping
-    public String addItemtoCart(@Argument String imageId, @Argument Long stockId, @Argument Integer price, @Argument Long userId) {
-        return cartService.addItemToCart(imageId, stockId, price, userId);
-    }
-
-    @MutationMapping
-    public boolean completePurchase(@Argument Long userId) throws JsonProcessingException {
-        return cartService.completePurchase(userId);
     }
 
 }
