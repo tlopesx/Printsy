@@ -1,7 +1,8 @@
-package cart.service;
+package cart.tasks;
 
 import cart.model.Cart;
 import cart.repository.CartRepository;
+import cart.service.CartService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;

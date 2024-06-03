@@ -2,6 +2,7 @@ package cart.service;
 import cart.dto.ProductResult;
 import cart.model.Product;
 import cart.repository.ProductRepository;
+import cart.service.integration.GalleryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -71,6 +72,15 @@ public class ProductService {
         else {
             throw new RuntimeException("Product with ID " + productId + " not found");
         }
+    }
+
+    public List<ProductResult> getProductsByUserId(Long userId) {
+        List<Product> products = productRepository.findProductsByUserId(userId);
+
+        if (products.isEmpty()) {
+            throw new RuntimeException("No products found for user with ID " + userId);
+        }
+        return convertToProductResults(products);
     }
 
     public List<ProductResult> getAllProducts() {

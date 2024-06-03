@@ -4,10 +4,8 @@ import cart.dto.CartResult;
 import cart.dto.ProductResult;
 import cart.service.CartService;
 import cart.service.ProductService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.graphql.data.method.annotation.Argument;
-import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 
@@ -42,7 +40,7 @@ public class Query {
 
     @QueryMapping
     public List<ProductResult> checkCartProductsByUserId(@Argument Long userId) {
-        return cartService.checkCartProductsByUserId(userId);
+        return productService.getProductsByUserId(userId);
     }
 
     @QueryMapping

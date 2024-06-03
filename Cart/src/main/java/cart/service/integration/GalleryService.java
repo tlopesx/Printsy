@@ -1,9 +1,8 @@
-package cart.service;
+package cart.service.integration;
 
 import cart.dto.ImageIdList;
 import cart.dto.ImageUrlList;
 import cart.util.Parser;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.awt.*;
 import java.util.*;
 import java.util.List;
 import java.util.logging.Logger;
@@ -90,7 +88,6 @@ public class GalleryService {
 
             ImageUrlList imageUrlList = parser.parseResponse(ImageUrlList.class, "getImageUrlsByImageIds", response);
 
-//            ImageUrlList imageUrlList = parseImageUrlList(response);
             if (imageUrlList != null && imageUrlList.getImageUrls() != null) {
                 List<String> imageUrls = imageUrlList.getImageUrls();
                 for (int i = 0; i < uncachedImageIds.size(); i++) {

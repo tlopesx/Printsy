@@ -1,4 +1,4 @@
-package cart.service;
+package cart.tasks;
 
 import cart.model.Cart;
 import cart.model.Product;

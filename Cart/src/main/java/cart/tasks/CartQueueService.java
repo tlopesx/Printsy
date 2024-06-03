@@ -1,12 +1,11 @@
-package cart.service;
+package cart.tasks;
 
 import cart.model.Cart;
 import cart.model.Product;
-import cart.queue.CartItemTask;
-import cart.queue.CartQueue;
 import cart.repository.CartRepository;
 import cart.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -26,11 +25,14 @@ public class CartQueueService {
 
     private static final Logger LOGGER = Logger.getLogger(CartQueueService.class.getName());
 
+    @Value("${printsy.expiration.delay}")
+    private int delayInSeconds;
+
     // Use ConcurrentHashMap for thread-safe operations
     private final Map<String, CartQueue> queueMap = new ConcurrentHashMap<>();
     private final Map<String, ExecutorService> executorMap = new ConcurrentHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(true);
-    private final Duration delay = Duration.ofSeconds(120);
+    private final Duration delay = Duration.ofSeconds(delayInSeconds);
     private final TaskSchedulerService taskSchedulerService;
     private final ProductRepository productRepository;
     private final CartRepository cartRepository;
@@ -44,14 +46,18 @@ public class CartQueueService {
     }
 
     // Adds a new CartQueue to the dictionary with the given imageId
-    public void addToQueue(String imageId, CartItemTask cartItemTask) {
+    public boolean addToQueue(String imageId, CartItemTask cartItemTask) {
         CartQueue cartQueue = queueMap.computeIfAbsent(imageId, k -> new CartQueue());
         LOGGER.info("Added to queue: " + imageId);
-        if (cartQueue.enqueue(cartItemTask)) {
+
+        boolean addedToQueue = cartQueue.enqueue(cartItemTask);
+        if (addedToQueue) {
             LOGGER.info("success");
         } else {
             LOGGER.severe("failed to enqueue task");
         }
+
+        return addedToQueue;
     }
 
     public int checkImagesInQueue(String imageId) {

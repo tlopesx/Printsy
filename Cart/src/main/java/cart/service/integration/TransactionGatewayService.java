@@ -1,4 +1,4 @@
-package cart.service;
+package cart.service.integration;
 
 import cart.dto.CountResult;
 import cart.dto.TransactionInput;

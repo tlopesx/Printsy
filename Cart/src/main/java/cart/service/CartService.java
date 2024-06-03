@@ -5,12 +5,14 @@ import cart.dto.ProductResult;
 import cart.model.Cart;
 import cart.model.Product;
 import cart.dto.TransactionInput;
-import cart.queue.CartItemTask;
-import cart.queue.CartQueue;
+import cart.service.integration.GalleryService;
+import cart.service.integration.TransactionGatewayService;
+import cart.tasks.*;
 import cart.repository.CartRepository;
 import cart.repository.ProductRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -22,31 +24,25 @@ public class CartService {
     private static final Logger LOGGER = Logger.getLogger(CartService.class.getName());
 
     private final CartRepository cartRepository;
-    private final ProductRepository productRepository;
+    private final QueueManager queueManager;
     public final ProductService productService;
-    private final CleanUpService cleanUpService;
-    private final TaskSchedulerService taskSchedulerService;
-    private final CartQueueService cartQueueService;
     private final TransactionGatewayService transactionGatewayService;
+
+    @Value("${printsy.image.count}")
+    private int MAX_IMAGE_COUNT;
 
 
     @Autowired
-    public CartService(CartRepository cartRepository, ProductRepository productRepository, ProductService productService, CleanUpService  cleanUpService,
-                       TaskSchedulerService taskSchedulerService, CartQueue cartQueue,
-                       TransactionGatewayService transactionGatewayService, CartQueueService cartQueueService, GalleryService galleryService) {
+    public CartService(CartRepository cartRepository, ProductService productService,
+                       TransactionGatewayService transactionGatewayService, QueueManager queueManager) {
         this.cartRepository = cartRepository;
-        this.productRepository = productRepository;
         this.productService = productService;
-        this.cleanUpService = cleanUpService;
-        this.taskSchedulerService = taskSchedulerService;
         this.transactionGatewayService = transactionGatewayService;
-        this.cartQueueService = cartQueueService;
-
+        this.queueManager = queueManager;
     }
 
     public boolean isImageAvailable(String imageId) {
-        // Determine availability (assuming a threshold of 10)
-        return getImageCountByImageId(imageId) < 10;
+        return getImageCountByImageId(imageId) < MAX_IMAGE_COUNT;
     }
 
     public boolean completePurchase(Long userId) {
@@ -63,8 +59,8 @@ public class CartService {
         try {
             boolean success = transactionGatewayService.completeTransaction(transactionInputs);
             if (success) {
-                cleanUpService.deleteCartAndProductEntitiesByUser(userId);
-                taskSchedulerService.cancelScheduledTask(userId);
+                queueManager.deleteCartAndProductEntitiesByUser(userId);
+                queueManager.cancelScheduledTask(userId);
             }
             return success;
         } catch (Exception e) {
@@ -75,7 +71,7 @@ public class CartService {
 
     public Integer getImageCountByImageId(String imageId) {
 
-        int countInCartQueues = cartQueueService.checkImagesInQueue(imageId);
+        int countInCartQueues = queueManager.checkImagesInQueue(imageId);
         int countInCarts = cartRepository.countByProductImageId(imageId);
         int countInTransactions = transactionGatewayService.getTransactionImageAvailability(imageId);
 
@@ -87,21 +83,8 @@ public class CartService {
         return convertToCartResults(cartItems);
     }
 
-    public List<ProductResult> checkCartProductsByUserId(Long userId) {
-        List<Cart> cartItems = cartRepository.findAllByUserId(userId);
-
-        List<Product> products = cartItems.stream()
-                .map(Cart::getProduct)
-                .toList();
-
-        if (products.isEmpty()) {
-            throw new RuntimeException("No products found for user with ID " + userId);
-        }
-        return productService.convertToProductResults(products);
-    }
-
     public void deleteCartItemsByUserId(Long userId) {
-        cleanUpService.deleteCartAndProductEntitiesByUser(userId);
+        queueManager.deleteCartAndProductEntitiesByUser(userId);
     }
 
     public String addItemToCart(String imageId, Long stockId, Integer price, Long userId) {
@@ -114,26 +97,26 @@ public class CartService {
             LOGGER.warning(errorMessage);
             return "limit exceeded";
         }
-        CartItemTask task = new CartItemTask(imageId, stockId, price, userId);
-        cartQueueService.addToQueue(imageId, task);
+        CartItemTask task = queueManager.createTask(imageId, stockId, price, userId);
+        queueManager.addToQueue(imageId, task);
         return "successfully added";
     }    
 
     public Long getRemainingCleanupTime(Long userId) {
-        Long remainingTime = taskSchedulerService.getRemainingTime(userId).getSeconds();
+        Long remainingTime = queueManager.getRemainingCartTime(userId).getSeconds();
         LOGGER.info("Remaining clean up time for userID " + userId + ": " + remainingTime + "seconds");
         return remainingTime;
     }
 
     public List<CartResult> convertToCartResults(List<Cart> cartItems) {
-        // Fetch all imageUrls at once if possible to minimize calls
+
         List<Product> products = cartItems.stream()
                 .map(Cart::getProduct)
                 .toList();
         List<ProductResult> productResults = productService.convertToProductResults(products);
 
         List<CartResult> cartResults = new ArrayList<>();
-        // Convert each product to ProductResult and collect into a list
+
         for (int i = 0; i < cartItems.size(); i++) {
             CartResult cartResult = new CartResult(cartItems.get(i));
             cartResult.setProductResult(productResults.get(i));

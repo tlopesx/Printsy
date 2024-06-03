@@ -11,8 +11,10 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     
-//    @Query("SELECT p FROM Product p WHERE p.productId = ?1")
     Optional<Product> findByProductId(Long productId);
+
+    @Query("SELECT p FROM Product p WHERE p.productId NOT IN (SELECT c.product.productId FROM Cart c WHERE c.userId == userId)")
+    List<Product> findProductsByUserId(Long userId);
 
     @Query("SELECT p FROM Product p WHERE p.productId NOT IN (SELECT c.product.productId FROM Cart c)")
     List<Product> findProductsNotInCart();

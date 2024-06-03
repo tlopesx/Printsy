@@ -27,8 +27,6 @@ public class Cart {
     @Temporal(TemporalType.TIMESTAMP)
     private Instant expirationTime;
 
-//---------------Getters and Setters-----------------
-
     public Cart() {
         this.expirationTime = Instant.now();
     }

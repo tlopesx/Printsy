@@ -1,4 +1,4 @@
-package cart.queue;
+package cart.tasks;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ public class CartQueue {
     private Queue<CartItemTask> queue = new ConcurrentLinkedQueue<>();
 
     @Value("${printsy.image.count}")
-    private int MAX_IMAGE_COUNT; // there will be a maximum of 10 objects in the queue
+    private int MAX_IMAGE_COUNT;
 
     public boolean enqueue(CartItemTask task) {
         if (queue.size() >= MAX_IMAGE_COUNT) {

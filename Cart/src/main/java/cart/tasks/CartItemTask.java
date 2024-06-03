@@ -1,6 +1,5 @@
-package cart.queue;
+package cart.tasks;
 
-import cart.model.Product;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;

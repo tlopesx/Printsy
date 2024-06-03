@@ -22,7 +22,6 @@ public class Product {
     @Column(name = "price")
     private Integer price;
 
-//---------------Getters and Setters-----------------
 
     public Product() {
     }
