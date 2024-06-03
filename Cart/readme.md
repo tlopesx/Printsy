@@ -26,9 +26,9 @@ The Cart Application specifically handles the shopping cart functionalities with
 This README will guide you through the key components of the Cart Application, including the available GraphQL mutations and queries, details on cart and product entities, the integration package for external services, and an in-depth look at the tasks package.
 
 A few things to note:
-- A user can only have one cart at a time. When a product manipulation occurs within the timer window, all active product timestamps are updated.
+- A user can only have one cart at a time. When a cart manipulation occurs within the timer window, all active cart expiration times for that user are updated.
 - The timer is 2 minutes. Edit in `application.properties`.
-- Before an item is added to the Cart table, we check the number of items being queued up for entry, the number of items in active carts, and the number of products already sold with the image.
+- Before an item is added to the Cart table, we check the number of items being queued up for entry, the number of items in active carts, and the number of products already sold with the image to check whether an image is available.
 
 
 ### GraphQL Mutations and Queries
