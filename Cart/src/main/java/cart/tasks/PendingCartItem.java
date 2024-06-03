@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 
 @Component
-public class CartItemTask {
+public class PendingCartItem {
     private String imageId;
     private Long stockId;
     private Integer price;
@@ -13,10 +13,10 @@ public class CartItemTask {
     private Instant expirationTime;
     
 
-    public CartItemTask() {
+    public PendingCartItem() {
     }
 
-    public CartItemTask(String imageId, Long stockId, Integer price, Long userId) {
+    public PendingCartItem(String imageId, Long stockId, Integer price, Long userId) {
         this.imageId = imageId;
         this.stockId = stockId;
         this.price = price;

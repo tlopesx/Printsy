@@ -1,51 +1,51 @@
 type CartResult {
-    productResult: ProductResult
-    userId: ID
-    expirationTime: String
+  productResult: ProductResult
+  userId: ID
+  expirationTime: String
 }
 
 type ProductResult {
-    imageId: ID
-    imageUrl: String
-    stockId: ID
-    price: Int
+  imageId: ID
+  imageUrl: String
+  stockId: ID
+  price: Int
 }
 
 type Product {
-    productId: ID
-    imageId: ID!
-    stockId: ID
-    price: Int
+  productId: ID
+  imageId: ID!
+  stockId: ID
+  price: Int
 }
 
 type CartItemTask {
-    userId: ID!
-    productId: ID!
-    imageId: ID!
+  userId: ID!
+  productId: ID!
+  imageId: ID!
 }
 
 type TransactionInput {
-    userId: ID!
-    productId: ID!
-    imageId: ID!
+  userId: ID!
+  productId: ID!
+  imageId: ID!
 }
 
 type Query {
-    findImageAvailability(imageId: ID!): Boolean    # TransactionGateway
-    findImageByImageId(imageId: ID!): Int           # MySQL
-    findCartItemsByUserId(userId: ID!): [CartResult]
-    findProductById(productId: ID!): ProductResult
-    findAllProducts: [ProductResult]
+  findImageAvailability(imageId: ID!): Boolean # TransactionGateway
+  findImageByImageId(imageId: ID!): Int # MySQL
+  findCartItemsByUserId(userId: ID!): [CartResult]
+  findProductById(productId: ID!): ProductResult
+  findAllProducts: [ProductResult]
 
-    getRemainingCleanupTime(userId: ID!): Int
-    peekQueue: CartItemTask
-    checkCartProductsByUserId(userId: ID!): [ProductResult]
+  getRemainingCleanupTime(userId: ID!): Int
+  peekQueue: CartItemTask
+  getCartProductsByUserId(userId: ID!): [ProductResult]
 
-    findCartItemsByUserIdForPurchase(userId: ID!): [CartResult]
+  findCartItemsByUserIdForPurchase(userId: ID!): [CartResult]
 }
 
 type Mutation {
-    deleteCartItemsByUserId(userId: ID!): String
-    addItemtoCart(imageId: ID!, stockId: ID!, price: Int!, userId: ID!): String
-    completePurchase(userId: ID!): Boolean
+  deleteCartItemsByUserId(userId: ID!): String
+  addItemtoCart(imageId: ID!, stockId: ID!, price: Int!, userId: ID!): String
+  completePurchase(userId: ID!): Boolean
 }

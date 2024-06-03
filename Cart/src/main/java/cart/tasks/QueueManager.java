@@ -5,8 +5,8 @@ import java.time.Instant;
 
 public interface QueueManager {
 
-    CartItemTask createTask(String imageId, Long stockId, Integer price, Long userId);
-    boolean addToQueue(String imageId, CartItemTask task);
+    PendingCartItem createTask(String imageId, Long stockId, Integer price, Long userId);
+    boolean addToQueue(String imageId, PendingCartItem task);
     void cancelScheduledTask(Long userId);
     void scheduleTask(Long userId, Runnable task, Instant scheduledTime);
     Duration getRemainingCartTime(Long userId);

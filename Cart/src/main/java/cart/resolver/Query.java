@@ -39,7 +39,7 @@ public class Query {
     }
 
     @QueryMapping
-    public List<ProductResult> checkCartProductsByUserId(@Argument Long userId) {
+    public List<ProductResult> getCartProductsByUserId(@Argument Long userId) {
         return productService.getProductsByUserId(userId);
     }
 
@@ -58,7 +58,7 @@ public class Query {
         return cartService.getRemainingCleanupTime(userId);
     }
 
-    @QueryMapping   
+    @QueryMapping
     public List<CartResult> findCartItemsByUserIdForPurchase(@Argument Long userId) {
         return cartService.getCartItemsByUserId(userId);
     }

@@ -20,18 +20,18 @@ public class QueueManagerImpl implements QueueManager {
     }
 
     @Override
-    public CartItemTask createTask(String imageId, Long stockId, Integer price, Long userId){
-        return new CartItemTask(imageId, stockId, price, userId);
+    public PendingCartItem createTask(String imageId, Long stockId, Integer price, Long userId){
+        return new PendingCartItem(imageId, stockId, price, userId);
     }
 
     @Override
-    public boolean addToQueue(String imageId, CartItemTask task) {
+    public boolean addToQueue(String imageId, PendingCartItem task) {
         return cartQueueService.addToQueue(imageId, task);
     }
 
     @Override
     public void cancelScheduledTask(Long userId) {
-        taskSchedulerService.cancelScheduledTask(userId);
+        taskSchedulerService.cancelScheduledDeleteTaskForUser(userId);
     }
 
     @Override
@@ -41,12 +41,12 @@ public class QueueManagerImpl implements QueueManager {
 
     @Override
     public Duration getRemainingCartTime(Long userId) {
-        return taskSchedulerService.getRemainingTime(userId);
+        return taskSchedulerService.getRemainingTimeUntilDeleteForUser(userId);
     }
 
     @Override
     public int checkImagesInQueue(String imageId) {
-        return cartQueueService.checkImagesInQueue(imageId);
+        return cartQueueService.countImagesInQueue(imageId);
     }
 
     @Override

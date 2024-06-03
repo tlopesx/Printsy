@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
@@ -24,7 +23,7 @@ public class TaskSchedulerService {
 
     private final TaskScheduler taskScheduler;
     private final CartRepository cartRepository;
-    private final HashMap<Long, ScheduledFuture<?>> cleanupTasksByUser = new HashMap<>();
+    private final HashMap<Long, ScheduledFuture<?>> pendingDeleteTasksByUser = new HashMap<>();
 
     @Autowired
     public TaskSchedulerService(TaskScheduler taskScheduler, CartRepository cartRepository) {
@@ -32,9 +31,9 @@ public class TaskSchedulerService {
         this.cartRepository = cartRepository;
     }
 
-    public void scheduleTask(Long userId, Runnable task, Instant scheduledTime) {
+    public void scheduleTask(Long userId, Runnable pendingDeleteTask, Instant scheduledTime) {
         LOGGER.info("Scheduling new task for userID: " + userId);
-        cancelScheduledTask(userId);  // Cancel the existing task if any
+        cancelScheduledDeleteTaskForUser(userId);  // Cancel the existing task if any
 
         // Update expiration time in db
         List<Cart> cartItems = cartRepository.findAllByUserId(userId);
@@ -45,16 +44,16 @@ public class TaskSchedulerService {
         });
 
         // Schedule task, add to hashmap
-        ScheduledFuture<?> scheduledFuture = taskScheduler.schedule(task, scheduledTime);
-        cleanupTasksByUser.put(userId, scheduledFuture);  // Store the new task
+        ScheduledFuture<?> scheduledFuture = taskScheduler.schedule(pendingDeleteTask, scheduledTime);
+        pendingDeleteTasksByUser.put(userId, scheduledFuture);  // Store the new task
         LOGGER.info("New delete task for user " + userId + " scheduled to run at " + scheduledTime);
     }
 
-    public void cancelScheduledTask(Long userId) {
-        ScheduledFuture<?> scheduledFuture = cleanupTasksByUser.get(userId);
+    public void cancelScheduledDeleteTaskForUser(Long userId) {
+        ScheduledFuture<?> scheduledFuture = pendingDeleteTasksByUser.get(userId);
         if (scheduledFuture != null) {
             scheduledFuture.cancel(true);
-            cleanupTasksByUser.remove(userId);  // Remove the cancelled task
+            pendingDeleteTasksByUser.remove(userId);  // Remove the cancelled task
             LOGGER.info("Cancelling existing delete task for user " + userId + ".");
         }
 
@@ -64,8 +63,8 @@ public class TaskSchedulerService {
     }
 
 
-    public Duration getRemainingTime(Long userId) {
-        ScheduledFuture<?> scheduledFuture = cleanupTasksByUser.get(userId);
+    public Duration getRemainingTimeUntilDeleteForUser(Long userId) {
+        ScheduledFuture<?> scheduledFuture = pendingDeleteTasksByUser.get(userId);
         if (scheduledFuture != null && !scheduledFuture.isDone()) {
             long delayMillis = scheduledFuture.getDelay(TimeUnit.MILLISECONDS);
             if (delayMillis < 0) {

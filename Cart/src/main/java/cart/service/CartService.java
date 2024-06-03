@@ -94,7 +94,7 @@ public class CartService {
             LOGGER.warning(errorMessage);
             return "limit exceeded";
         }
-        CartItemTask task = queueManager.createTask(imageId, stockId, price, userId);
+        PendingCartItem task = queueManager.createTask(imageId, stockId, price, userId);
         queueManager.addToQueue(imageId, task);
         return "successfully added";
     }    

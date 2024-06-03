@@ -25,8 +25,6 @@ public class CartQueueService {
 
     private static final Logger LOGGER = Logger.getLogger(CartQueueService.class.getName());
 
-
-
     // Use ConcurrentHashMap for thread-safe operations
     private final Map<String, CartQueue> queueMap = new ConcurrentHashMap<>();
     private final Map<String, ExecutorService> executorMap = new ConcurrentHashMap<>();
@@ -51,11 +49,11 @@ public class CartQueueService {
     }
 
     // Adds a new CartQueue to the dictionary with the given imageId
-    public boolean addToQueue(String imageId, CartItemTask cartItemTask) {
+    public boolean addToQueue(String imageId, PendingCartItem pendingCartItem) {
         CartQueue cartQueue = queueMap.computeIfAbsent(imageId, k -> new CartQueue());
         LOGGER.info("Added to queue: " + imageId);
 
-        boolean addedToQueue = cartQueue.enqueue(cartItemTask);
+        boolean addedToQueue = cartQueue.enqueue(pendingCartItem);
         if (addedToQueue) {
             LOGGER.info("success");
         } else {
@@ -65,7 +63,7 @@ public class CartQueueService {
         return addedToQueue;
     }
 
-    public int checkImagesInQueue(String imageId) {
+    public int countImagesInQueue(String imageId) {
         CartQueue imageQueue = queueMap.get(imageId);
         if (imageQueue != null) {
             return imageQueue.getQueueSize();
@@ -98,9 +96,9 @@ public class CartQueueService {
         CartQueue cartQueue = queueMap.get(imageId);
         while (running.get() && cartQueue != null) {
             try {
-                CartItemTask task = cartQueue.dequeue();
-                if (task != null) {
-                    processTask(task);
+                PendingCartItem pendingCartItem = cartQueue.dequeue();
+                if (pendingCartItem != null) {
+                    processTask(pendingCartItem);
                 } else {
                     Thread.sleep(1000); // Wait before checking the queue again
                 }
@@ -126,26 +124,26 @@ public class CartQueueService {
 
 
 
-    private void processTask(CartItemTask task){
+    private void processTask(PendingCartItem pendingCartItem){
         // Create product and add to Products table
         Product newProduct = new Product(
-                task.getImageId(),
-                task.getStockId(),
-                task.getPrice());
+                pendingCartItem.getImageId(),
+                pendingCartItem.getStockId(),
+                pendingCartItem.getPrice());
         productRepository.save(newProduct);
 
         Cart newCartItem = new Cart(
-                task.getUserId(),
+                pendingCartItem.getUserId(),
                 newProduct);
         cartRepository.save(newCartItem);
 
 
         if (newProduct.getProductId() == null ) {
-            LOGGER.severe("Failed to save product in the database for Image ID: " + task.getImageId());
+            LOGGER.severe("Failed to save product in the database for Image ID: " + pendingCartItem.getImageId());
         }
         else {
             LOGGER.info("Product created with Product ID: " + newProduct.getProductId() + ". Added to cart.");
-            scheduleCartCleanup(task.getUserId(), Instant.now().plus(delay));
+            scheduleCartCleanup(pendingCartItem.getUserId(), Instant.now().plus(delay));
         }
 
 
@@ -153,16 +151,9 @@ public class CartQueueService {
 
     public void scheduleCartCleanup(Long userId, Instant scheduledTime) {
         LOGGER.info("Scheduling cleanup task for used ID: " + userId);
-        Runnable cleanupTask = () -> {
 
-            LOGGER.info("Running scheduled cart cleanup for user ID: " + userId);
-            List<Cart> cartItems = cartRepository.findAllByUserId(userId);
-            if (cartItems.isEmpty()) {
-                throw new RuntimeException("No cart items found for user with ID " + userId);
-            }
-            cartRepository.deleteAll(cartItems);
-        };
-        taskSchedulerService.scheduleTask(userId, cleanupTask, scheduledTime);
+        PendingCleanUpTask cleanUpTask = new PendingCleanUpTask(userId, cartRepository);
+        taskSchedulerService.scheduleTask(userId, cleanUpTask, scheduledTime);
     }
 
 }
