@@ -17,15 +17,20 @@ public class CartQueue {
 
     public boolean enqueue(PendingCartItem pendingCartItem) {
         enqueueLock.lock(); // Lock to ensure only one thread can add at a time
+
+        boolean success;
+
         try {
+            System.out.println(queue.size());
             if (queue.size() >= MAX_IMAGE_COUNT) {
-                return false;
+                success = false;
             }
             queue.add(pendingCartItem);
-            return true;
+            success = true;
         } finally {
             enqueueLock.unlock(); // Ensure the lock is released after adding
         }
+        return success;
     }
 
     public PendingCartItem dequeue() {

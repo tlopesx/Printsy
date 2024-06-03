@@ -28,13 +28,13 @@ public class Cart {
     private Instant expirationTime;
 
     public Cart() {
-        this.expirationTime = Instant.now();
+//        this.expirationTime = Instant.now();
     }
 
-    public Cart(Long userId, Product product) {
+    public Cart(Long userId, Product product, Instant expirationTime) {
         this.userId = userId;
         this.product = product;
-        this.expirationTime = Instant.now();
+        this.expirationTime = expirationTime;
     }
 
     public Long getId() {

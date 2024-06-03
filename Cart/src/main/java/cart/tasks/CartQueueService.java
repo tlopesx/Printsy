@@ -4,6 +4,7 @@ import cart.model.Cart;
 import cart.model.Product;
 import cart.repository.CartRepository;
 import cart.repository.ProductRepository;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,7 @@ public class CartQueueService {
     // Delay config
     @Value("${printsy.expiration.delay}")
     private int delayInSeconds;
-    private final Duration delay = Duration.ofSeconds(delayInSeconds);
+    private Duration delay;
 
     // Dependencies
     private final TaskSchedulerService taskSchedulerService;
@@ -46,6 +47,11 @@ public class CartQueueService {
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
         startProcessing();
+    }
+
+    @PostConstruct
+    public void init() {
+        this.delay = Duration.ofSeconds(delayInSeconds);
     }
 
     // Adds a new CartQueue to the dictionary with the given imageId
@@ -125,6 +131,11 @@ public class CartQueueService {
 
 
     private void processTask(PendingCartItem pendingCartItem){
+        Instant expirationTime = Instant.now().plus(delay);
+
+        LOGGER.info("Delay: " + delay);
+        LOGGER.info("Expiration Time: " + expirationTime);
+
         // Create product and add to Products table
         Product newProduct = new Product(
                 pendingCartItem.getImageId(),
@@ -134,7 +145,8 @@ public class CartQueueService {
 
         Cart newCartItem = new Cart(
                 pendingCartItem.getUserId(),
-                newProduct);
+                newProduct,
+                expirationTime);
         cartRepository.save(newCartItem);
 
 
@@ -143,7 +155,7 @@ public class CartQueueService {
         }
         else {
             LOGGER.info("Product created with Product ID: " + newProduct.getProductId() + ". Added to cart.");
-            scheduleCartCleanup(pendingCartItem.getUserId(), Instant.now().plus(delay));
+            scheduleCartCleanup(pendingCartItem.getUserId(), expirationTime);
         }
 
 

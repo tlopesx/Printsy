@@ -95,15 +95,17 @@ public class CartService {
             return "limit exceeded";
         }
         PendingCartItem task = queueManager.createTask(imageId, stockId, price, userId);
-        queueManager.addToQueue(imageId, task);
-        return "successfully added";
-    }    
+        boolean success = queueManager.addToQueue(imageId, task);
+        if (success) {
+            return "successfully added item to cart";
+        } else {
+            return "failed to add item to cart";
+        }
+    }
 
     public Long getRemainingCleanupTime(Long userId) {
         Long remainingTime = queueManager.getRemainingCartTime(userId).getSeconds();
         LOGGER.info("Remaining clean up time for userID " + userId + ": " + remainingTime + "seconds");
         return remainingTime;
     }
-
-
 }

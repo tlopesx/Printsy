@@ -1,30 +1,3 @@
-# Data Types & Schemas
-
-#### Product Table --> MySQL
-
-| Field            | Data Type          | Details                           | Example                                  |
-|------------------|--------------------|-----------------------------------|------------------------------------------|
-| product_id        | ID                 | Primary key desired product combo | 44412345                                 | 
-| image_id          | ID                 | Image Table foreign key           | 22212345                                 | 
-| stock_id          | ID                 | Stock Table foreign key           | 33312345                                 | 
-| price     | Integer              | basePrice + imageSurcharge        | 79.98                                    | ---> aggregation
-
-
-#### Cart Table --> MySQL
-
-| Field            | Data Type          | Details                              | Example               |
-|------------------|--------------------|--------------------------------------|-----------------------|
-| user_id           | ID                 | Foreign Key with User table          | 66612345              |
-| product_id        | ID                 | Foreign Key with Product table       | 
-| expiration_time   | String/Integer     | Timestamp of cart expiration (+10min)| "2023-03-10 02:10:00" |
-
-
-- A user can only have one cart at a time. When a product manipulation occurs within the timer window, all active product timestamps are updated.
-- The timer is 10 minutes.
-- If the end_timestamp of the user's userId is older than current time, then the purchase was unsuccessful and the cart is deleted.
-- baseline amount of images still available is checked against the transactions, then the Cart (or maybe already at the product stage) needs to check against all other products in the cart table if other users already have this image in their cart (limit is 10)
-
-
 
 
 
@@ -51,6 +24,12 @@ Printsy is composed of several microservices, each fulfilling a specific role wi
 The Cart Application specifically handles the shopping cart functionalities within Printsy. It allows users to add items to their cart, complete purchases, and manage their cart items efficiently. The application provides a GraphQL API for querying and mutating cart and product data, interfaces with external services for image and transaction management, and includes a robust task management system to handle asynchronous processing of cart items.
 
 This README will guide you through the key components of the Cart Application, including the available GraphQL mutations and queries, details on cart and product entities, the integration package for external services, and an in-depth look at the tasks package.
+
+A few things to note:
+- A user can only have one cart at a time. When a product manipulation occurs within the timer window, all active product timestamps are updated.
+- The timer is 2 minutes. Edit in `application.properties`.
+- Before an item is added to the Cart table, we check the number of items being queued up for entry, the number of items in active carts, and the number of products already sold with the image.
+
 
 ### GraphQL Mutations and Queries
 
@@ -112,12 +91,12 @@ The tasks package handles asynchronous processing of cart items. It ensures task
 #### Components
 - **PendingCartItem**: Represents an object with the necessary info to create a cart item. 
 - **CartQueue**: Manages the queue of `PendingCartItem` objects. There is a single queue for each imageId, ensuring that pending cart items for a single image are processed one by one. 
-Once a pending cart item is added to the database, a cleanup task is created to manage its deletion at cart expiration.
-- **CleanUpService**: Manages the cleanup of expired cart items.
+Once a pending cart item is processed, the Cart and Product entries are added to the database, and a cleanup task is created to manage deletion at cart expiration.
+- **CleanUpService**: Manages the cleanup of expired cart items in case a node fails.
 - **CartQueueService**: Handles the management and processing of tasks within the queue.
 
-- **TaskSchedulerService**: Schedules tasks for future execution and manages their lifecycle.
-- **QueueManager**: A unified interface for interacting with the task queue.
+- **TaskSchedulerService**: Schedules deletion tasks for future execution and manages their lifecycle.
+- **QueueManager**: A unified interface for interacting with the task queue. If the queue is moved to a separate service, implementation would be replaced accordingly.
 
 #### How it Works
 1. **Enqueue Operation**: Tasks are added to the queue using the `enqueue` method, which ensures that tasks are added in a thread-safe manner.
@@ -126,5 +105,3 @@ Once a pending cart item is added to the database, a cleanup task is created to 
 4. **Task Scheduling and Cleanup**: The `TaskSchedulerService` manages the scheduling of tasks, while the `CleanUpService` handles the removal of expired items.
 
 ---
-
-This README provides an overview of the Cart Application, detailing its GraphQL API, core entities, integration services, and the task management system. For further information or specific details about the GraphQL operations and other components, please refer to the respective sections in the documentation.
