@@ -2,7 +2,7 @@ package cart.service.integration;
 
 import cart.dto.ImageIdList;
 import cart.dto.ImageUrlList;
-import cart.util.Parser;
+import cart.util.ResponseParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,14 +17,14 @@ import java.util.logging.Logger;
 @Service
 public class GalleryService {
     private static final Logger LOGGER = Logger.getLogger(GalleryService.class.getName());
-    private final Parser parser;
+    private final ResponseParser responseParser;
     private final WebClient webClient;
     private final Map<String, String> imageUrlCache = new HashMap<>();  // Cache for storing image URLs
 
     @Autowired
-    public GalleryService(@Qualifier("galleryWebClient") WebClient webClient, Parser parser) {
+    public GalleryService(@Qualifier("galleryWebClient") WebClient webClient, ResponseParser responseParser) {
         this.webClient = webClient;
-        this.parser = parser;
+        this.responseParser = responseParser;
     }
 
     public String getImageUrl(String imageId) {
@@ -86,7 +86,7 @@ public class GalleryService {
                     .block();
             LOGGER.info("Response: " + response);
 
-            ImageUrlList imageUrlList = parser.parseResponse(ImageUrlList.class, "getImageUrlsByImageIds", response);
+            ImageUrlList imageUrlList = responseParser.parseResponse(ImageUrlList.class, "getImageUrlsByImageIds", response);
 
             if (imageUrlList != null && imageUrlList.getImageUrls() != null) {
                 List<String> imageUrls = imageUrlList.getImageUrls();

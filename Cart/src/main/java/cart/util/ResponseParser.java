@@ -1,17 +1,15 @@
 package cart.util;
 
-import cart.service.CartService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 import java.util.logging.Logger;
 
 @Component
-public class Parser {
+public class ResponseParser {
 
-    private static final Logger LOGGER = Logger.getLogger(Parser.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ResponseParser.class.getName());
 
     public <T> T parseResponse(Class<T> instanceType, String requestName, String response) {
         ObjectMapper objectMapper = new ObjectMapper();

@@ -70,10 +70,6 @@ public class Cart {
     }
 
 
-    public TransactionInput toTransactionInput(){
-        return new TransactionInput(this.userId, this.product.getProductId(), this.product.getImageId());
-    }
-
     @Override
     public String toString() {
         return "Cart{" +

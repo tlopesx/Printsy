@@ -1,16 +1,13 @@
 package cart.service;
 
 import cart.dto.CartResult;
-import cart.dto.ProductResult;
 import cart.model.Cart;
-import cart.model.Product;
 import cart.dto.TransactionInput;
-import cart.service.integration.GalleryService;
 import cart.service.integration.TransactionGatewayService;
 import cart.tasks.*;
 import cart.repository.CartRepository;
-import cart.repository.ProductRepository;
 
+import cart.util.DTOMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -25,7 +22,7 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final QueueManager queueManager;
-    public final ProductService productService;
+    private final DTOMapper dtoMapper;
     private final TransactionGatewayService transactionGatewayService;
 
     @Value("${printsy.image.count}")
@@ -33,12 +30,12 @@ public class CartService {
 
 
     @Autowired
-    public CartService(CartRepository cartRepository, ProductService productService,
-                       TransactionGatewayService transactionGatewayService, QueueManager queueManager) {
+    public CartService(CartRepository cartRepository,
+                       TransactionGatewayService transactionGatewayService, QueueManager queueManager, DTOMapper dtoMapper) {
         this.cartRepository = cartRepository;
-        this.productService = productService;
         this.transactionGatewayService = transactionGatewayService;
         this.queueManager = queueManager;
+        this.dtoMapper = dtoMapper;
     }
 
     public boolean isImageAvailable(String imageId) {
@@ -49,7 +46,7 @@ public class CartService {
         // Cancel the scheduled task
         List<Cart> cartItems = cartRepository.findAllByUserId(userId);
         List<TransactionInput> transactionInputs = cartItems.stream()
-                .map(Cart::toTransactionInput)
+                .map(cart -> dtoMapper.convertCartItemToTransactionInput(cart))
                 .toList();
 
         if (transactionInputs.isEmpty()) {
@@ -70,9 +67,8 @@ public class CartService {
     }
 
     public Integer getImageCountByImageId(String imageId) {
-
-        int countInCartQueues = queueManager.checkImagesInQueue(imageId);
         int countInCarts = cartRepository.countByProductImageId(imageId);
+        int countInCartQueues = queueManager.checkImagesInQueue(imageId);
         int countInTransactions = transactionGatewayService.getTransactionImageAvailability(imageId);
 
         return countInCartQueues + countInCarts + countInTransactions;
@@ -80,10 +76,11 @@ public class CartService {
 
     public List<CartResult> getCartItemsByUserId(Long userId) {
         List<Cart> cartItems = cartRepository.findAllByUserId(userId);
-        return convertToCartResults(cartItems);
+        return dtoMapper.convertCartItemsToCartResults(cartItems);
     }
 
     public void deleteCartItemsByUserId(Long userId) {
+        LOGGER.info("Deleting all cart entries and products for userID: " + userId);
         queueManager.deleteCartAndProductEntitiesByUser(userId);
     }
 
@@ -108,21 +105,5 @@ public class CartService {
         return remainingTime;
     }
 
-    public List<CartResult> convertToCartResults(List<Cart> cartItems) {
-
-        List<Product> products = cartItems.stream()
-                .map(Cart::getProduct)
-                .toList();
-        List<ProductResult> productResults = productService.convertToProductResults(products);
-
-        List<CartResult> cartResults = new ArrayList<>();
-
-        for (int i = 0; i < cartItems.size(); i++) {
-            CartResult cartResult = new CartResult(cartItems.get(i));
-            cartResult.setProductResult(productResults.get(i));
-            cartResults.add(cartResult);
-        }
-        return cartResults;
-    }
 
 }
