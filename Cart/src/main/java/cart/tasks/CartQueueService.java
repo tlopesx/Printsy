@@ -25,14 +25,19 @@ public class CartQueueService {
 
     private static final Logger LOGGER = Logger.getLogger(CartQueueService.class.getName());
 
-    @Value("${printsy.expiration.delay}")
-    private int delayInSeconds;
+
 
     // Use ConcurrentHashMap for thread-safe operations
     private final Map<String, CartQueue> queueMap = new ConcurrentHashMap<>();
     private final Map<String, ExecutorService> executorMap = new ConcurrentHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(true);
+
+    // Delay config
+    @Value("${printsy.expiration.delay}")
+    private int delayInSeconds;
     private final Duration delay = Duration.ofSeconds(delayInSeconds);
+
+    // Dependencies
     private final TaskSchedulerService taskSchedulerService;
     private final ProductRepository productRepository;
     private final CartRepository cartRepository;
@@ -136,21 +141,14 @@ public class CartQueueService {
 
 
         if (newProduct.getProductId() == null ) {
-            String errorMessage = "Failed to save product in the database for Image ID: " + task.getImageId();
-            LOGGER.severe(errorMessage);
-            return;
+            LOGGER.severe("Failed to save product in the database for Image ID: " + task.getImageId());
+        }
+        else {
+            LOGGER.info("Product created with Product ID: " + newProduct.getProductId() + ". Added to cart.");
+            scheduleCartCleanup(task.getUserId(), Instant.now().plus(delay));
         }
 
-        scheduleCartCleanupWithDelay(task.getUserId());
 
-        // Add product to cart queue
-        LOGGER.info("Product created with Product ID: " + newProduct.getProductId() + ". Added to cart.");
-
-    }
-
-    public void scheduleCartCleanupWithDelay(Long userId){
-        Instant scheduledTime = Instant.now().plus(delay);
-        scheduleCartCleanup(userId, scheduledTime);
     }
 
     public void scheduleCartCleanup(Long userId, Instant scheduledTime) {
@@ -158,16 +156,12 @@ public class CartQueueService {
         Runnable cleanupTask = () -> {
 
             LOGGER.info("Running scheduled cart cleanup for user ID: " + userId);
-
             List<Cart> cartItems = cartRepository.findAllByUserId(userId);
-
             if (cartItems.isEmpty()) {
                 throw new RuntimeException("No cart items found for user with ID " + userId);
             }
-
             cartRepository.deleteAll(cartItems);
         };
-
         taskSchedulerService.scheduleTask(userId, cleanupTask, scheduledTime);
     }
 
